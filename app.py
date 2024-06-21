@@ -23,7 +23,6 @@ app = Flask(__name__)
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
-
 # landing page and search
 @app.route("/" , methods=["GET", "POST"])
 def index():
@@ -102,8 +101,6 @@ def register():
         cur.close()
 
         return redirect("/login")
-
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if session.get("user_id"):
@@ -613,7 +610,25 @@ def add_data():
 
         return redirect(url_for("view", location_id=location_id))
 
+@app.route('/add_location_data', methods=['GET'])
+def add_location_data():
+    # Extract data for the location from the query parameters
+    location_id = request.args.get('location_id')
+    ph = request.args.get('ph')
+    turbidity = request.args.get('turbidity')
+    temperature = request.args.get('temperature')
+    tds = request.args.get('tds')
 
+    # Save the data to the database
+    cur = db.cursor(buffered=True)
+    query = "INSERT INTO data (location_id, ph, turbidity, temperature, tds) VALUES (%s, %s, %s, %s, %s)"
+    data = (location_id, ph, turbidity, temperature, tds)
+    cur.execute(query, data)
+    db.commit()
+    cur.close()
+
+    # Redirect to the view page for the location
+    return redirect(url_for("view", location_id=location_id))
 @app.route("/all_location_data")
 def all_location_data():
     location_id = session["location_id"]
@@ -1149,6 +1164,7 @@ def admin_user_edit():
         first_name = request.form.get("first_name")
         last_name = request.form.get("last_name")
         user_type = request.form.get("user_type")
+        db.set_login()
 
         if user_name:
             # See if username taken
@@ -1156,7 +1172,7 @@ def admin_user_edit():
             cur.execute("SELECT * FROM users WHERE user_name = %s", (user_name, ))
             if cur.rowcount > 0:
                 cur.close()
-                session["error_massage"] = "Username allready exits"
+                session["error_massage"] = "Username already exits"
                 return redirect("/apology")
             else:
                 cur.close()
@@ -1171,7 +1187,7 @@ def admin_user_edit():
             cur.execute("SELECT * FROM users WHERE email = %s", (email, ))
             if cur.rowcount > 0:
                 cur.close()
-                session["error_massage"] = "Email is allready in use"
+                session["error_massage"] = "Email is already in use"
                 return redirect("/apology")
             else:
                 cur.close()
